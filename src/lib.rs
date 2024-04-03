@@ -1,10 +1,7 @@
+use ethereum_consensus::capella::{BeaconBlockHeader, BeaconState};
+use ethereum_consensus::phase0::mainnet::SLOTS_PER_HISTORICAL_ROOT;
+use ethereum_consensus::ssz::prelude::*;
 use serde;
-use ssz_rs::{prelude::*, Node};
-use sync_committee_rs::{
-    // TODO: get beacon types
-    consensus_types::{BeaconBlockHeader, BeaconState},
-    constants::SLOTS_PER_HISTORICAL_ROOT,
-};
 
 /// Necessary proofs to verify that a given block is an ancestor of another block.
 /// In our case, it proves that the block that contains the event we are looking for, is an ancestor of the recent block that we got from the LightClientUpdate message.
@@ -30,11 +27,6 @@ pub fn proof(
     target_block: &mut BeaconBlockHeader,
     recent_block: &mut BeaconBlockHeader,
 ) -> BlockRootsProof {
-    // let epoch_target = compute_epoch_at_slot(target_block.slot) as usize;
-    // let epoch_recent = compute_epoch_at_slot(recent_block.slot) as usize;
-    // println!("target epoch {:?}", epoch_target);
-    // println!("recent epoch {:?}", epoch_recent);
-
     if recent_block.slot.saturating_sub(target_block.slot) >= (SLOTS_PER_HISTORICAL_ROOT as u64) {
         // todo:  Historical root proofs
         unimplemented!()
