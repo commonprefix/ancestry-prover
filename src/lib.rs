@@ -1,7 +1,8 @@
-use ethereum_consensus::capella::mainnet::SLOTS_PER_HISTORICAL_ROOT;
+use ethereum_consensus::capella::presets::mainnet::BeaconState;
+use ethereum_consensus::capella::presets::mainnet::SLOTS_PER_HISTORICAL_ROOT;
 use ethereum_consensus::capella::BeaconBlockHeader;
 use ethereum_consensus::ssz::prelude::*;
-use ethereum_consensus::types::mainnet::BeaconState;
+// use ethereum_consensus::types::mainnet::BeaconState;
 use serde;
 
 /// Necessary proofs to verify that a given block is an ancestor of another block.
@@ -91,6 +92,6 @@ mod tests {
         let mut recent_block = get_test_block_for_slot(7_879_323);
 
         let proof = proof(&mut target_block, &mut recent_block);
-        assert_eq!(proof.block_roots_index, 6804);
+        assert_eq!(proof.block_roots_index, 309908);
     }
 }
