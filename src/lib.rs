@@ -1,8 +1,10 @@
+mod errors;
+mod prover;
 use ethereum_consensus::capella::presets::mainnet::BeaconState;
 use ethereum_consensus::capella::presets::mainnet::SLOTS_PER_HISTORICAL_ROOT;
 use ethereum_consensus::capella::BeaconBlockHeader;
 use ethereum_consensus::ssz::prelude::*;
-// use ethereum_consensus::types::mainnet::BeaconState;
+use prover::ProverAPI;
 use serde;
 
 /// Necessary proofs to verify that a given block is an ancestor of another block.
@@ -24,34 +26,46 @@ impl Default for BlockRootsProof {
     }
 }
 
-// This implementation generates an ancestry proof from the target block to a recent block.
-// Currently, the target block cannot be older than SLOTS_PER_HISTORICAL_ROOT (8192 blocks, ~27 hours).
-pub fn proof(
-    target_block: &mut BeaconBlockHeader,
-    recent_block: &mut BeaconBlockHeader,
-) -> BlockRootsProof {
-    if recent_block.slot.saturating_sub(target_block.slot) >= (SLOTS_PER_HISTORICAL_ROOT as u64) {
-        // todo:  Historical root proofs
-        unimplemented!()
-    }
-
-    println!("target {:?}", target_block.hash_tree_root());
-    println!("recent {:?}", recent_block.hash_tree_root());
-
-    let index = target_block.slot % SLOTS_PER_HISTORICAL_ROOT as u64;
-    let path = &["block_roots".into(), PathElement::Index(index as usize)];
-    let gindex = BeaconState::generalized_index(path).unwrap() as u64;
-
-    // get proofs from loadstar/state prover
-
-    BlockRootsProof {
-        block_roots_index: gindex,
-        block_root_proof: vec![],
-    }
+pub struct AncestryProver<P: ProverAPI> {
+    prover_api: P,
 }
 
-pub fn verify() {
-    todo!()
+impl<P: ProverAPI> AncestryProver<P> {
+    pub fn new(prover_api: P) -> Self {
+        Self { prover_api }
+    }
+
+    // This implementation generates an ancestry proof from the target block to a recent block.
+    // Currently, the target block cannot be older than SLOTS_PER_HISTORICAL_ROOT (8192 blocks, ~27 hours).
+    pub fn proof(
+        &self,
+        target_block: &mut BeaconBlockHeader,
+        recent_block: &mut BeaconBlockHeader,
+    ) -> BlockRootsProof {
+        if recent_block.slot.saturating_sub(target_block.slot) >= (SLOTS_PER_HISTORICAL_ROOT as u64)
+        {
+            // todo:  Historical root proofs
+            unimplemented!()
+        }
+
+        println!("target {:?}", target_block.hash_tree_root());
+        println!("recent {:?}", recent_block.hash_tree_root());
+
+        let index = target_block.slot % SLOTS_PER_HISTORICAL_ROOT as u64;
+        let path = &["block_roots".into(), PathElement::Index(index as usize)];
+        let gindex = BeaconState::generalized_index(path).unwrap() as u64;
+
+        // get proofs from loadstar/state prover
+
+        BlockRootsProof {
+            block_roots_index: gindex,
+            block_root_proof: vec![],
+        }
+    }
+
+    pub fn verify(&self) {
+        todo!()
+    }
 }
 
 #[cfg(test)]
@@ -73,7 +87,8 @@ mod tests {
         let mut target_block = get_test_block_for_slot(7_862_720);
         let mut recent_block = get_test_block_for_slot(7_879_376);
 
-        _ = proof(&mut target_block, &mut recent_block);
+        let prover = AncestryProver::new(prover::MockProverAPI::new());
+        _ = prover.proof(&mut target_block, &mut recent_block);
     }
 
     #[test]
@@ -82,16 +97,17 @@ mod tests {
         let mut target_block = get_test_block_for_slot(7_879_316);
         let mut recent_block = get_test_block_for_slot(7_879_323);
 
-        _ = proof(&mut target_block, &mut recent_block);
+        let prover = AncestryProver::new(prover::MockProverAPI::new());
+        _ = prover.proof(&mut target_block, &mut recent_block);
     }
 
     #[test]
     fn it_should_return_correct_block_roots_index() {
-        // 7879323 - 7879316 = 7
         let mut target_block = get_test_block_for_slot(7_879_316);
         let mut recent_block = get_test_block_for_slot(7_879_323);
 
-        let proof = proof(&mut target_block, &mut recent_block);
+        let prover = AncestryProver::new(prover::MockProverAPI::new());
+        let proof = prover.proof(&mut target_block, &mut recent_block);
         assert_eq!(proof.block_roots_index, 309908);
     }
 }
