@@ -1,11 +1,11 @@
-use ethereum_consensus::capella::{BeaconBlockHeader, BeaconState};
-use ethereum_consensus::phase0::mainnet::SLOTS_PER_HISTORICAL_ROOT;
+use ethereum_consensus::capella::mainnet::SLOTS_PER_HISTORICAL_ROOT;
+use ethereum_consensus::capella::BeaconBlockHeader;
 use ethereum_consensus::ssz::prelude::*;
+use ethereum_consensus::types::mainnet::BeaconState;
 use serde;
 
 /// Necessary proofs to verify that a given block is an ancestor of another block.
 /// In our case, it proves that the block that contains the event we are looking for, is an ancestor of the recent block that we got from the LightClientUpdate message.
-// #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 pub struct BlockRootsProof {
     /// Generalized index from a block_root that we care to the block_root to the state root.
@@ -23,6 +23,8 @@ impl Default for BlockRootsProof {
     }
 }
 
+// This implementation generates an ancestry proof from the target block to a recent block.
+// Currently, the target block cannot be older than SLOTS_PER_HISTORICAL_ROOT (8192 blocks, ~27 hours).
 pub fn proof(
     target_block: &mut BeaconBlockHeader,
     recent_block: &mut BeaconBlockHeader,
@@ -35,10 +37,16 @@ pub fn proof(
     println!("target {:?}", target_block.hash_tree_root());
     println!("recent {:?}", recent_block.hash_tree_root());
 
-    // calc gindex/path
+    let index = target_block.slot % SLOTS_PER_HISTORICAL_ROOT as u64;
+    let path = &["block_roots".into(), PathElement::Index(index as usize)];
+    let gindex = BeaconState::generalized_index(path).unwrap() as u64;
+
     // get proofs from loadstar/state prover
 
-    BlockRootsProof::default()
+    BlockRootsProof {
+        block_roots_index: gindex,
+        block_root_proof: vec![],
+    }
 }
 
 pub fn verify() {
@@ -74,5 +82,15 @@ mod tests {
         let mut recent_block = get_test_block_for_slot(7_879_323);
 
         _ = proof(&mut target_block, &mut recent_block);
+    }
+
+    #[test]
+    fn it_should_return_correct_block_roots_index() {
+        // 7879323 - 7879316 = 7
+        let mut target_block = get_test_block_for_slot(7_879_316);
+        let mut recent_block = get_test_block_for_slot(7_879_323);
+
+        let proof = proof(&mut target_block, &mut recent_block);
+        assert_eq!(proof.block_roots_index, 6804);
     }
 }
