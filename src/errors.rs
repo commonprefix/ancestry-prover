@@ -2,6 +2,15 @@ use reqwest;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
+pub enum AncestryProverError {
+    #[error("Unknown error: {0}")]
+    UnknownError(String),
+
+    #[error("Prover API error: {0}")]
+    ProverAPIError(#[from] ProverAPIError),
+}
+
+#[derive(Error, Debug)]
 pub enum ProverAPIError {
     #[error("Request failed: {0}")]
     RequestError(String),
