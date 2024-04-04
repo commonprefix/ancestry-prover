@@ -1,8 +1,7 @@
 mod errors;
 mod provider;
 use errors::AncestryProverError;
-use ethereum_consensus::capella::presets::mainnet::BeaconState;
-use ethereum_consensus::capella::presets::mainnet::SLOTS_PER_HISTORICAL_ROOT;
+use ethereum_consensus::capella::presets::mainnet::{BeaconState, SLOTS_PER_HISTORICAL_ROOT};
 use ethereum_consensus::capella::BeaconBlockHeader;
 use ethereum_consensus::ssz::prelude::*;
 use provider::ProofProvider;
@@ -13,7 +12,6 @@ use serde;
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq)]
 pub struct BlockRootsProof {
     /// Generalized index from a block_root that we care to the block_root to the state root.
-    // No need to provide that, since it can be calculated on-chain.
     block_roots_index: u64,
     block_root_proof: Vec<Node>,
 }
