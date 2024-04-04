@@ -41,7 +41,7 @@ impl<P: ProofProvider> AncestryProver<P> {
     pub async fn proof(
         &self,
         target_block: &mut BeaconBlockHeader,
-        recent_block: &mut BeaconBlockHeader,
+        recent_block: &BeaconBlockHeader,
     ) -> Result<BlockRootsProof, AncestryProverError> {
         if recent_block.slot.saturating_sub(target_block.slot) >= (SLOTS_PER_HISTORICAL_ROOT as u64)
         {
@@ -67,9 +67,27 @@ impl<P: ProofProvider> AncestryProver<P> {
             block_root_proof: proof.witnesses,
         })
     }
+}
 
-    pub fn verify(&self) {
-        todo!()
+pub fn verify(
+    proof: BlockRootsProof,
+    target_block: &mut BeaconBlockHeader,
+    recent_block: &BeaconBlockHeader,
+) -> bool {
+    if recent_block.slot.saturating_sub(target_block.slot) >= (SLOTS_PER_HISTORICAL_ROOT as u64) {
+        // todo:  Historical root proofs
+        unimplemented!()
+    }
+
+    let merkle_proof = ssz_rs::proofs::Proof {
+        leaf: target_block.hash_tree_root().unwrap(),
+        index: proof.block_roots_index as usize,
+        branch: proof.block_root_proof,
+    };
+
+    match merkle_proof.verify(recent_block.state_root) {
+        Ok(_) => true,
+        Err(_) => false,
     }
 }
 
@@ -90,13 +108,13 @@ mod tests {
         block
     }
 
-    fn setup<'a>() -> (Server, AncestryProver<LoadstarProver>) {
-        let server = Server::run();
-        let url = server.url("");
-        let prover_api = LoadstarProver::new("mainnet".to_string(), url.to_string());
-        let prover = AncestryProver::new(prover_api);
-        (server, prover)
-    }
+    // fn setup<'a>() -> (Server, AncestryProver<LoadstarProver>) {
+    //     let server = Server::run();
+    //     let url = server.url("");
+    //     let prover_api = LoadstarProver::new("mainnet".to_string(), url.to_string());
+    //     let prover = AncestryProver::new(prover_api);
+    //     (server, prover)
+    // }
 
     #[tokio::test]
     #[should_panic(expected = "not implemented")]
@@ -191,5 +209,37 @@ mod tests {
             .unwrap();
 
         assert_eq!(proof, expected_proof);
+    }
+
+    #[tokio::test]
+    async fn it_should_verify_correct_proof() {
+        let mut target_block = get_test_block_for_slot(7_877_867);
+        let mut recent_block = get_test_block_for_slot(7_878_867);
+
+        let mut prover_api = provider::MockProofProvider::new();
+        prover_api
+            .expect_get_state_proof()
+            .returning(|block_id, gindex| {
+                let filename = format!(
+                    "./src/testdata/state_prover/state_proof_{}_g{}.json",
+                    block_id, gindex
+                );
+                let file = File::open(filename).unwrap();
+                let res: Proof = serde_json::from_reader(file).unwrap();
+
+                Ok(res)
+            });
+        let prover = AncestryProver::new(prover_api);
+        let proof = prover
+            .proof(&mut target_block, &mut recent_block)
+            .await
+            .unwrap();
+
+        assert!(verify(
+            // TODO see if we should avoid cloning the proof
+            proof.clone(),
+            &mut target_block,
+            &recent_block
+        ));
     }
 }
