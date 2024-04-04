@@ -124,7 +124,13 @@ mod tests {
 
         let prover_api = LoadstarProver::new("mainnet".to_string(), "".to_string());
         let prover = AncestryProver::new(prover_api);
-        _ = prover.prove(target_block.slot, recent_block.slot, recent_block.state_root.to_string().as_str()).await;
+        _ = prover
+            .prove(
+                target_block.slot,
+                recent_block.slot,
+                recent_block.state_root.to_string().as_str(),
+            )
+            .await;
     }
 
     #[tokio::test]
@@ -138,7 +144,13 @@ mod tests {
             .expect_get_state_proof()
             .returning(|_block_id, _gindex| Ok(Proof::default()));
         let prover = AncestryProver::new(prover_api);
-        _ = prover.prove(target_block.slot, recent_block.slot, recent_block.state_root.to_string().as_str()).await;
+        _ = prover
+            .prove(
+                target_block.slot,
+                recent_block.slot,
+                recent_block.state_root.to_string().as_str(),
+            )
+            .await;
     }
 
     #[tokio::test]
@@ -170,7 +182,11 @@ mod tests {
         );
 
         let proof = prover
-            .prove(target_block.slot, recent_block.slot, recent_block.state_root.to_string().as_str())
+            .prove(
+                target_block.slot,
+                recent_block.slot,
+                recent_block.state_root.to_string().as_str(),
+            )
             .await
             .unwrap();
         assert_eq!(proof.block_roots_index, 309908);
@@ -203,7 +219,11 @@ mod tests {
             });
         let prover = AncestryProver::new(prover_api);
         let proof = prover
-            .prove(target_block.slot, recent_block.slot, recent_block.state_root.to_string().as_str())
+            .prove(
+                target_block.slot,
+                recent_block.slot,
+                recent_block.state_root.to_string().as_str(),
+            )
             .await
             .unwrap();
 
@@ -231,15 +251,14 @@ mod tests {
         let prover = AncestryProver::new(prover_api);
 
         let proof = prover
-            .prove(target_block.slot, recent_block.slot, recent_block.state_root.to_string().as_str())
+            .prove(
+                target_block.slot,
+                recent_block.slot,
+                recent_block.state_root.to_string().as_str(),
+            )
             .await
             .unwrap();
 
-        assert!(verify(
-            // TODO see if we should avoid cloning the proof
-            proof.clone(),
-            &mut target_block,
-            &recent_block
-        ));
+        assert!(verify(proof, &mut target_block, &recent_block));
     }
 }
