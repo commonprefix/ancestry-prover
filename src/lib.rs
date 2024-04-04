@@ -1,5 +1,6 @@
 mod errors;
 mod provider;
+use alloy_primitives::FixedBytes;
 use errors::AncestryProverError;
 use ethereum_consensus::capella::presets::mainnet::{BeaconState, SLOTS_PER_HISTORICAL_ROOT};
 use ethereum_consensus::capella::BeaconBlockHeader;
@@ -70,21 +71,23 @@ impl<P: ProofProvider> AncestryProver<P> {
 
 pub fn verify(
     proof: BlockRootsProof,
-    target_block: &mut BeaconBlockHeader,
-    recent_block: &BeaconBlockHeader,
+    target_block_slot: u64,
+    target_block_hash: FixedBytes<32>,
+    recent_block_slot: u64,
+    recent_block_state_root: FixedBytes<32>,
 ) -> bool {
-    if recent_block.slot.saturating_sub(target_block.slot) >= (SLOTS_PER_HISTORICAL_ROOT as u64) {
+    if recent_block_slot.saturating_sub(target_block_slot) >= (SLOTS_PER_HISTORICAL_ROOT as u64) {
         // todo:  Historical root proofs
         unimplemented!()
     }
 
     let merkle_proof = ssz_rs::proofs::Proof {
-        leaf: target_block.hash_tree_root().unwrap(),
+        leaf: target_block_hash.as_slice().try_into().unwrap(),
         index: proof.block_roots_index as usize,
         branch: proof.block_root_proof,
     };
 
-    match merkle_proof.verify(recent_block.state_root) {
+    match merkle_proof.verify(recent_block_state_root) {
         Ok(_) => true,
         Err(_) => false,
     }
@@ -98,7 +101,7 @@ mod tests {
 
     use super::*;
     use httptest::{matchers::*, responders::*, Expectation, Server};
-    use std::fs::File;
+    use std::{fs::File, str::FromStr};
 
     fn get_test_block_for_slot(slot: u64) -> BeaconBlockHeader {
         let filename = format!("./src/testdata/beacon_block_headers/{}.json", slot);
@@ -259,6 +262,46 @@ mod tests {
             .await
             .unwrap();
 
-        assert!(verify(proof, &mut target_block, &recent_block));
+        let target_block_hash = target_block.hash_tree_root().unwrap();
+
+        assert!(verify(
+            proof,
+            target_block.slot,
+            target_block_hash,
+            recent_block.slot,
+            recent_block.state_root
+        ));
     }
+
+    // #[tokio::test]
+    // async fn it_should_work_grandpa() {
+    //     let prover_api = provider::LoadstarProver::new(
+    //         "mainnet".to_string(),
+    //         "http://108.61.210.145:3000".to_string(),
+    //     );
+    //     let prover = AncestryProver::new(prover_api);
+
+    //     let proof = prover
+    //         .prove(
+    //             8784152,
+    //             8784409,
+    //             "0xfe208f4f3334cf033a4fed4e1b83191e54ec98e0731a08d4a57b901eb35d4964",
+    //         )
+    //         .await
+    //         .unwrap();
+
+    //     assert!(verify(
+    //         proof,
+    //         8784152,
+    //         FixedBytes::from_str(
+    //             "0x22e5a0db0a3a4104996d140ba82ab4f2f94af20fba6da3408baa0dc87744dcef"
+    //         )
+    //         .unwrap(),
+    //         8784409,
+    //         FixedBytes::from_str(
+    //             "0xfe208f4f3334cf033a4fed4e1b83191e54ec98e0731a08d4a57b901eb35d4964"
+    //         )
+    //         .unwrap(),
+    //     ));
+    // }
 }

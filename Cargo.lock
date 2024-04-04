@@ -62,6 +62,7 @@ dependencies = [
 name = "ancestry-prover"
 version = "0.1.0"
 dependencies = [
+ "alloy-primitives",
  "async-trait",
  "ethereum-consensus",
  "futures",
