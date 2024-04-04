@@ -6,12 +6,12 @@ pub enum AncestryProverError {
     #[error("Unknown error: {0}")]
     UnknownError(String),
 
-    #[error("Prover API error: {0}")]
-    ProverAPIError(#[from] ProverAPIError),
+    #[error("ProofProvider error: {0}")]
+    ProofProviderError(#[from] ProofProviderError),
 }
 
 #[derive(Error, Debug)]
-pub enum ProverAPIError {
+pub enum ProofProviderError {
     #[error("Request failed: {0}")]
     RequestError(String),
     #[error("Failed to parse response: {0}")]

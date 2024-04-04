@@ -1,6 +1,5 @@
 mod errors;
 mod provider;
-use async_trait::async_trait;
 use errors::AncestryProverError;
 use ethereum_consensus::capella::presets::mainnet::BeaconState;
 use ethereum_consensus::capella::presets::mainnet::SLOTS_PER_HISTORICAL_ROOT;
@@ -11,7 +10,7 @@ use serde;
 
 /// Necessary proofs to verify that a given block is an ancestor of another block.
 /// In our case, it proves that the block that contains the event we are looking for, is an ancestor of the recent block that we got from the LightClientUpdate message.
-#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq)]
 pub struct BlockRootsProof {
     /// Generalized index from a block_root that we care to the block_root to the state root.
     // No need to provide that, since it can be calculated on-chain.
@@ -29,12 +28,12 @@ impl Default for BlockRootsProof {
 }
 
 pub struct AncestryProver<P: ProofProvider> {
-    prover_api: P,
+    proof_provider: P,
 }
 
 impl<P: ProofProvider> AncestryProver<P> {
-    pub fn new(prover_api: P) -> Self {
-        Self { prover_api }
+    pub fn new(proof_provider: P) -> Self {
+        Self { proof_provider }
     }
 
     // This implementation generates an ancestry proof from the target block to a recent block.
@@ -50,19 +49,17 @@ impl<P: ProofProvider> AncestryProver<P> {
             unimplemented!()
         }
 
-        let recent_block_hash = recent_block.hash_tree_root().unwrap();
-        let hash_str = serde_json::to_string(&recent_block_hash).unwrap();
+        let state_root_str = &recent_block.state_root.to_string();
 
-        // println!("{}", hash_str);
-
+        // calculate gindex of the target block
         let index = target_block.slot % SLOTS_PER_HISTORICAL_ROOT as u64;
         let path = &["block_roots".into(), PathElement::Index(index as usize)];
         let gindex = BeaconState::generalized_index(path).unwrap() as u64;
 
-        // get proofs from loadstar/state prover
+        // get proofs from provider
         let proof = self
-            .prover_api
-            .get_block_proof(hash_str.as_str(), gindex)
+            .proof_provider
+            .get_state_proof(state_root_str.as_str(), gindex)
             .await?;
 
         Ok(BlockRootsProof {
@@ -114,7 +111,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn it_should_not_panic_for_recent_blocks() {
+    async fn it_should_provide_proof_for_recent_blocks() {
         // 7879323 - 7879316 = 7
         let mut target_block = get_test_block_for_slot(7_879_316);
         let mut recent_block = get_test_block_for_slot(7_879_323);
@@ -122,14 +119,7 @@ mod tests {
         let mut prover_api = provider::MockProofProvider::new();
         prover_api
             .expect_get_state_proof()
-            .returning(|block_id, gindex| {
-                let filename = format!("state_proof_{}_g{}.json", block_id, gindex);
-                let filename = format!("./src/testdata/state_prover/{}", filename);
-                let file = File::open(filename).unwrap();
-                let res: Proof = serde_json::from_reader(file).unwrap();
-
-                Ok(res)
-            });
+            .returning(|_block_id, _gindex| Ok(Proof::default()));
         let prover = AncestryProver::new(prover_api);
         _ = prover.proof(&mut target_block, &mut recent_block).await;
     }
@@ -138,37 +128,68 @@ mod tests {
     async fn it_should_return_correct_block_roots_index() {
         let mut target_block = get_test_block_for_slot(7_879_316);
         let mut recent_block = get_test_block_for_slot(7_879_323);
+        let expected_gindex = 309_908;
 
-        // let (server, prover_api, prover) = setup();
         let server = Server::run();
         let url = server.url("");
         let prover_api = LoadstarProver::new("mainnet".to_string(), url.to_string());
         let prover = AncestryProver::new(prover_api);
-        let expected_response = Proof::default();
-        let json_response = serde_json::to_string(&expected_response).unwrap();
 
-        println!("{:?}", json_response);
+        let expected_response = Proof {
+            gindex: expected_gindex,
+            ..Default::default()
+        };
+        let json_response = serde_json::to_string(&expected_response).unwrap();
 
         server.expect(
             Expectation::matching(all_of![
                 request::query(url_decoded(contains((
                     "state_id",
-                    "0x8187c32a9a82f6666b5d70ad9d0a3a63fa35f3c8e42ce3fc9546d59a3c9abbd1"
+                    "0xa16855f71e99a620029e6b7c683abab542f66ee87c3dd8c72424568348f28b33"
                 )))),
                 request::query(url_decoded(contains(("gindex", "309908")))),
             ])
             .respond_with(status_code(200).body(json_response)),
         );
-        // server.expect(
-        //     Expectation::matching(request::path("/foo"))
-        //         .times(1..)
-        //         .respond_with(status_code(200).body(json_response)),
-        // );
 
         let proof = prover
             .proof(&mut target_block, &mut recent_block)
             .await
             .unwrap();
         assert_eq!(proof.block_roots_index, 309908);
+    }
+
+    #[tokio::test]
+    async fn it_should_return_correct_proof() {
+        let mut target_block = get_test_block_for_slot(7_877_867);
+        let mut recent_block = get_test_block_for_slot(7_878_867);
+
+        let file = File::open("./src/testdata/state_prover/state_proof_0x044adfafd8b8a889ea689470f630e61dddba22feb705c83eec032fac075de2ec_g308459.json").unwrap();
+        let expected_proof: Proof = serde_json::from_reader(file).unwrap();
+        let expected_proof = BlockRootsProof {
+            block_roots_index: expected_proof.gindex,
+            block_root_proof: expected_proof.witnesses,
+        };
+
+        let mut prover_api = provider::MockProofProvider::new();
+        prover_api
+            .expect_get_state_proof()
+            .returning(|block_id, gindex| {
+                let filename = format!(
+                    "./src/testdata/state_prover/state_proof_{}_g{}.json",
+                    block_id, gindex
+                );
+                let file = File::open(filename).unwrap();
+                let res: Proof = serde_json::from_reader(file).unwrap();
+
+                Ok(res)
+            });
+        let prover = AncestryProver::new(prover_api);
+        let proof = prover
+            .proof(&mut target_block, &mut recent_block)
+            .await
+            .unwrap();
+
+        assert_eq!(proof, expected_proof);
     }
 }
