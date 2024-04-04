@@ -36,21 +36,22 @@ impl<P: ProofProvider> AncestryProver<P> {
 
     // This implementation generates an ancestry proof from the target block to a recent block.
     // Currently, the target block cannot be older than SLOTS_PER_HISTORICAL_ROOT (8192 blocks, ~27 hours).
-    pub async fn proof(
+    pub async fn prove(
         &self,
-        target_block: &mut BeaconBlockHeader,
-        recent_block: &BeaconBlockHeader,
+        target_block_slot: u64,
+        recent_block_slot: u64,
+        recent_block_state_root: &str,
     ) -> Result<BlockRootsProof, AncestryProverError> {
-        if recent_block.slot.saturating_sub(target_block.slot) >= (SLOTS_PER_HISTORICAL_ROOT as u64)
+        if recent_block_slot.saturating_sub(target_block_slot) >= (SLOTS_PER_HISTORICAL_ROOT as u64)
         {
             // todo:  Historical root proofs
             unimplemented!()
         }
 
-        let state_root_str = &recent_block.state_root.to_string();
+        let state_root_str = &recent_block_state_root.to_string();
 
         // calculate gindex of the target block
-        let index = target_block.slot % SLOTS_PER_HISTORICAL_ROOT as u64;
+        let index = target_block_slot % SLOTS_PER_HISTORICAL_ROOT as u64;
         let path = &["block_roots".into(), PathElement::Index(index as usize)];
         let gindex = BeaconState::generalized_index(path).unwrap() as u64;
 
@@ -118,32 +119,32 @@ mod tests {
     #[should_panic(expected = "not implemented")]
     async fn it_should_panic_for_old_blocks() {
         // 7879376 - 7862720 = 16656
-        let mut target_block = get_test_block_for_slot(7_862_720);
-        let mut recent_block = get_test_block_for_slot(7_879_376);
+        let target_block = get_test_block_for_slot(7_862_720);
+        let recent_block = get_test_block_for_slot(7_879_376);
 
         let prover_api = LoadstarProver::new("mainnet".to_string(), "".to_string());
         let prover = AncestryProver::new(prover_api);
-        _ = prover.proof(&mut target_block, &mut recent_block).await;
+        _ = prover.prove(target_block.slot, recent_block.slot, recent_block.state_root.to_string().as_str()).await;
     }
 
     #[tokio::test]
     async fn it_should_provide_proof_for_recent_blocks() {
         // 7879323 - 7879316 = 7
-        let mut target_block = get_test_block_for_slot(7_879_316);
-        let mut recent_block = get_test_block_for_slot(7_879_323);
+        let target_block = get_test_block_for_slot(7_879_316);
+        let recent_block = get_test_block_for_slot(7_879_323);
 
         let mut prover_api = provider::MockProofProvider::new();
         prover_api
             .expect_get_state_proof()
             .returning(|_block_id, _gindex| Ok(Proof::default()));
         let prover = AncestryProver::new(prover_api);
-        _ = prover.proof(&mut target_block, &mut recent_block).await;
+        _ = prover.prove(target_block.slot, recent_block.slot, recent_block.state_root.to_string().as_str()).await;
     }
 
     #[tokio::test]
     async fn it_should_return_correct_block_roots_index() {
-        let mut target_block = get_test_block_for_slot(7_879_316);
-        let mut recent_block = get_test_block_for_slot(7_879_323);
+        let target_block = get_test_block_for_slot(7_879_316);
+        let recent_block = get_test_block_for_slot(7_879_323);
         let expected_gindex = 309_908;
 
         let server = Server::run();
@@ -169,7 +170,7 @@ mod tests {
         );
 
         let proof = prover
-            .proof(&mut target_block, &mut recent_block)
+            .prove(target_block.slot, recent_block.slot, recent_block.state_root.to_string().as_str())
             .await
             .unwrap();
         assert_eq!(proof.block_roots_index, 309908);
@@ -177,8 +178,8 @@ mod tests {
 
     #[tokio::test]
     async fn it_should_return_correct_proof() {
-        let mut target_block = get_test_block_for_slot(7_877_867);
-        let mut recent_block = get_test_block_for_slot(7_878_867);
+        let target_block = get_test_block_for_slot(7_877_867);
+        let recent_block = get_test_block_for_slot(7_878_867);
 
         let file = File::open("./src/testdata/state_prover/state_proof_0x044adfafd8b8a889ea689470f630e61dddba22feb705c83eec032fac075de2ec_g308459.json").unwrap();
         let expected_proof: Proof = serde_json::from_reader(file).unwrap();
@@ -202,7 +203,7 @@ mod tests {
             });
         let prover = AncestryProver::new(prover_api);
         let proof = prover
-            .proof(&mut target_block, &mut recent_block)
+            .prove(target_block.slot, recent_block.slot, recent_block.state_root.to_string().as_str())
             .await
             .unwrap();
 
@@ -212,7 +213,7 @@ mod tests {
     #[tokio::test]
     async fn it_should_verify_correct_proof() {
         let mut target_block = get_test_block_for_slot(7_877_867);
-        let mut recent_block = get_test_block_for_slot(7_878_867);
+        let recent_block = get_test_block_for_slot(7_878_867);
 
         let mut prover_api = provider::MockProofProvider::new();
         prover_api
@@ -228,8 +229,9 @@ mod tests {
                 Ok(res)
             });
         let prover = AncestryProver::new(prover_api);
+
         let proof = prover
-            .proof(&mut target_block, &mut recent_block)
+            .prove(target_block.slot, recent_block.slot, recent_block.state_root.to_string().as_str())
             .await
             .unwrap();
 
