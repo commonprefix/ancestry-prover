@@ -31,6 +31,7 @@ pub struct LoadstarProver {
 
 /// A wrapper around the state [`prover`](https://github.com/commonprefix/state-prover)
 impl LoadstarProver {
+    #[cfg(test)]
     pub fn new(network: String, rpc: String) -> Self {
         Self { network, rpc }
     }
