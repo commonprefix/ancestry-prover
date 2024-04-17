@@ -6,36 +6,36 @@ use mockall::automock;
 use serde::{Deserialize, Serialize};
 
 #[derive(PartialEq, Deserialize, Debug, Serialize, Default, Clone)]
-pub(crate) struct LoadstarProof {
+pub(crate) struct LodestarProof {
     pub gindex: u64,
     pub witnesses: Vec<Node>,
     pub leaf: Node,
 }
 
-impl From<LoadstarProof> for Proof {
-    fn from(loadstar_proof: LoadstarProof) -> Self {
+impl From<LodestarProof> for Proof {
+    fn from(lodestar_proof: LodestarProof) -> Self {
         Proof {
-            index: loadstar_proof.gindex,
-            branch: loadstar_proof.witnesses,
-            leaf: loadstar_proof.leaf,
+            index: lodestar_proof.gindex,
+            branch: lodestar_proof.witnesses,
+            leaf: lodestar_proof.leaf,
         }
     }
 }
 
-/// Provider that uses [`state prover`](https://github.com/commonprefix/state-prover) to interact with the Loadstar API.
+/// Provider that uses [`state prover`](https://github.com/commonprefix/state-prover) to interact with the Lodestar API.
 #[derive(Clone)]
-pub struct LoadstarProvider {
+pub struct LodestarProvider {
     network: String,
     rpc: String,
 }
 
-impl LoadstarProvider {
+impl LodestarProvider {
     #[cfg(test)]
     pub fn new(network: String, rpc: String) -> Self {
         Self { network, rpc }
     }
 
-    async fn get(&self, req: &str) -> Result<LoadstarProof, ProofProviderError> {
+    async fn get(&self, req: &str) -> Result<LodestarProof, ProofProviderError> {
         let response = reqwest::get(req)
             .await
             .map_err(ProofProviderError::NetworkError)?;
@@ -55,7 +55,7 @@ impl LoadstarProvider {
 
 #[automock]
 #[async_trait]
-impl ProofProvider for LoadstarProvider {
+impl ProofProvider for LodestarProvider {
     async fn get_state_proof(
         &self,
         state_id: &str,
@@ -66,10 +66,10 @@ impl ProofProvider for LoadstarProvider {
             self.rpc, state_id, gindex, self.network
         );
 
-        let loadstar_proof = self.get(&req).await;
-        match loadstar_proof {
-            Ok(loadstar_proof) => {
-                let proof: Proof = loadstar_proof.into();
+        let lodestar_proof = self.get(&req).await;
+        match lodestar_proof {
+            Ok(lodestar_proof) => {
+                let proof: Proof = lodestar_proof.into();
                 Ok(proof)
             }
             Err(e) => Err(e),
@@ -82,17 +82,17 @@ mod tests {
     use super::*;
     use httptest::{matchers::*, responders::*, Expectation, Server};
 
-    fn setup_server_and_prover() -> (Server, LoadstarProvider) {
+    fn setup_server_and_prover() -> (Server, LodestarProvider) {
         let server = Server::run();
         let url = server.url("");
-        let rpc = LoadstarProvider::new("mainnet".to_string(), url.to_string());
+        let rpc = LodestarProvider::new("mainnet".to_string(), url.to_string());
         (server, rpc)
     }
 
     #[tokio::test]
     async fn test_get_state_proof() {
         let (server, prover) = setup_server_and_prover();
-        let expected_response = LoadstarProof::default();
+        let expected_response = LodestarProof::default();
         let json_response = serde_json::to_string(&expected_response).unwrap();
 
         server.expect(

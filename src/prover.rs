@@ -94,8 +94,8 @@ mod tests {
     use std::fs::File;
 
     use crate::provider::Proof;
-    use crate::LoadstarProvider;
-    use crate::{loadstar::LoadstarProof, provider};
+    use crate::LodestarProvider;
+    use crate::{lodestar::LodestarProof, provider};
     use ethereum_consensus::capella::BeaconBlockHeader;
 
     use super::*;
@@ -108,10 +108,10 @@ mod tests {
         block
     }
 
-    // fn setup<'a>() -> (Server, AncestryProver<LoadstarProvider>) {
+    // fn setup<'a>() -> (Server, AncestryProver<LodestarProvider>) {
     //     let server = Server::run();
     //     let url = server.url("");
-    //     let prover_api = LoadstarProvider::new("mainnet".to_string(), url.to_string());
+    //     let prover_api = LodestarProvider::new("mainnet".to_string(), url.to_string());
     //     let prover = AncestryProver::new(prover_api);
     //     (server, prover)
     // }
@@ -123,7 +123,7 @@ mod tests {
         let target_block = get_test_block_for_slot(7_862_720);
         let recent_block = get_test_block_for_slot(7_879_376);
 
-        let prover_api = LoadstarProvider::new("mainnet".to_string(), "".to_string());
+        let prover_api = LodestarProvider::new("mainnet".to_string(), "".to_string());
         let prover = AncestryProver::new(prover_api);
         _ = prover
             .prove(
@@ -162,10 +162,10 @@ mod tests {
 
         let server = Server::run();
         let url = server.url("");
-        let prover_api = LoadstarProvider::new("mainnet".to_string(), url.to_string());
+        let prover_api = LodestarProvider::new("mainnet".to_string(), url.to_string());
         let prover = AncestryProver::new(prover_api);
 
-        let expected_response = LoadstarProof {
+        let expected_response = LodestarProof {
             gindex: expected_gindex,
             ..Default::default()
         };
@@ -194,12 +194,12 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn it_should_return_correct_proof_with_loadstar() {
+    async fn it_should_return_correct_proof_with_lodestar() {
         let target_block = get_test_block_for_slot(7_877_867);
         let recent_block = get_test_block_for_slot(7_878_867);
 
         let file = File::open("./src/testdata/state_prover/state_proof_0x044adfafd8b8a889ea689470f630e61dddba22feb705c83eec032fac075de2ec_g308459.json").unwrap();
-        let expected_proof: LoadstarProof = serde_json::from_reader(file).unwrap();
+        let expected_proof: LodestarProof = serde_json::from_reader(file).unwrap();
         let expected_proof = BlockRootsProof {
             index: expected_proof.gindex,
             branch: expected_proof.witnesses,
@@ -214,7 +214,7 @@ mod tests {
                     block_id, gindex
                 );
                 let file = File::open(filename).unwrap();
-                let res: LoadstarProof = serde_json::from_reader(file).unwrap();
+                let res: LodestarProof = serde_json::from_reader(file).unwrap();
                 let proof: Proof = res.into();
                 Ok(proof)
             });
@@ -245,7 +245,7 @@ mod tests {
                     block_id, gindex
                 );
                 let file = File::open(filename).unwrap();
-                let res: LoadstarProof = serde_json::from_reader(file).unwrap();
+                let res: LodestarProof = serde_json::from_reader(file).unwrap();
                 let proof: Proof = res.into();
                 Ok(proof)
             });
@@ -273,7 +273,7 @@ mod tests {
 
     // #[tokio::test]
     // async fn it_should_work_grandpa() {
-    //     let prover_api = provider::LoadstarProvider::new(
+    //     let prover_api = provider::LodestarProvider::new(
     //         "mainnet".to_string(),
     //         "http://108.61.210.145:3000".to_string(),
     //     );

@@ -4,4 +4,4 @@
 
 ### Providers
 
-Currently, the prover supports only the Loadstar Provider. Any provider that implements the `ProofProvider` trait can be used.
+Currently, the prover supports only the Lodestar Provider. Any provider that implements the `ProofProvider` trait can be used.

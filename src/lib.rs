@@ -1,9 +1,9 @@
 pub mod errors;
-pub mod loadstar;
+pub mod lodestar;
 pub mod prover;
 pub mod provider;
 
-pub use loadstar::LoadstarProvider;
+pub use lodestar::LodestarProvider;
 pub use prover::verify;
 pub use prover::AncestryProver;
 pub use provider::ProofProvider;
