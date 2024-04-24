@@ -1,6 +1,15 @@
 use ethereum_consensus::ssz::prelude::*;
 use sha2::{Digest, Sha256};
 use std::collections::HashSet;
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum MerkleizationError {
+    #[error("Descriptor bitstring invalid: {0}")]
+    InvalidDescriptorError(String),
+    #[error("Invalid proof error")]
+    InvalidProofError(),
+}
 
 // Below copied from ssz_rs
 
@@ -75,7 +84,9 @@ fn compute_proof_indices(indices: &[GeneralizedIndex]) -> Vec<GeneralizedIndex> 
     sorted_indices
 }
 
-pub fn compute_proof_descriptor(indices: &[GeneralizedIndex]) -> Vec<u8> {
+pub fn compute_proof_descriptor(
+    indices: &[GeneralizedIndex],
+) -> Result<Vec<u8>, MerkleizationError> {
     let indices = compute_proof_indices(indices);
     let mut bitstring = String::new();
     for &index in &indices {
@@ -92,9 +103,9 @@ pub fn compute_proof_descriptor(indices: &[GeneralizedIndex]) -> Vec<u8> {
     if let Ok(num) = usize::from_str_radix(&bitstring, 2) {
         let bytes = num.to_be_bytes();
         let significant_bytes = (bitstring.len() + 7) / 8;
-        bytes[bytes.len() - significant_bytes..].to_vec()
+        Ok(bytes[bytes.len() - significant_bytes..].to_vec())
     } else {
-        vec![] // Return an empty vector if the conversion fails
+        Err(MerkleizationError::InvalidDescriptorError(bitstring))
     }
 }
 
@@ -140,44 +151,53 @@ fn compute_bits_from_proof_descriptor(descriptor: &[u8]) -> Vec<bool> {
     bits
 }
 
-fn calculate_compact_multi_merkle_root(nodes: &[Node], descriptor: &[u8]) -> Node {
+fn calculate_compact_multi_merkle_root(
+    nodes: &[Node],
+    descriptor: &[u8],
+) -> Result<Node, MerkleizationError> {
     let bits = compute_bits_from_proof_descriptor(descriptor);
     let mut ptr = [0, 0]; // [bit_index, node_index]
-    let root = calculate_compact_multi_merkle_root_inner(nodes, &bits, &mut ptr);
-    assert_eq!(ptr[0], bits.len());
-    assert_eq!(ptr[1], nodes.len());
-    root
+    let root = calculate_compact_multi_merkle_root_inner(nodes, &bits, &mut ptr)?;
+    if ptr[0] != bits.len() || ptr[1] != nodes.len() {
+        Err(MerkleizationError::InvalidProofError())
+    } else {
+        Ok(root)
+    }
 }
 
 fn calculate_compact_multi_merkle_root_inner(
     nodes: &[Node],
     bits: &[bool],
     ptr: &mut [usize; 2],
-) -> Node {
+) -> Result<Node, MerkleizationError> {
     let bit = bits[ptr[0]];
     ptr[0] += 1;
     if bit {
         let node = nodes[ptr[1]];
         ptr[1] += 1;
-        node
+        Ok(node)
     } else {
-        let left = calculate_compact_multi_merkle_root_inner(nodes, bits, ptr);
-        let right = calculate_compact_multi_merkle_root_inner(nodes, bits, ptr);
-        hash(left, right)
+        let left = calculate_compact_multi_merkle_root_inner(nodes, bits, ptr)?;
+        let right = calculate_compact_multi_merkle_root_inner(nodes, bits, ptr)?;
+        let mut result = left;
+        let mut hasher = Sha256::new();
+        hasher.update(left);
+        hasher.update(right);
+        result.copy_from_slice(&hasher.finalize_reset());
+        Ok(result)
     }
 }
 
-pub fn verify_compact_merkle_multiproof(nodes: &[Node], descriptor: &[u8], root: Node) -> bool {
-    calculate_compact_multi_merkle_root(nodes, descriptor) == root
-}
-
-fn hash(left: Node, right: Node) -> Node {
-    let mut result = left;
-    let mut hasher = Sha256::new();
-    hasher.update(left);
-    hasher.update(right);
-    result.copy_from_slice(&hasher.finalize_reset());
-    result
+pub fn verify_compact_merkle_multiproof(
+    nodes: &[Node],
+    descriptor: &[u8],
+    root: Node,
+) -> Result<(), MerkleizationError> {
+    if calculate_compact_multi_merkle_root(nodes, descriptor)? == root {
+        Ok(())
+    } else {
+        Err(MerkleizationError::InvalidProofError())
+    }
 }
 
 #[cfg(test)]
@@ -194,17 +214,23 @@ mod tests {
     #[test]
     fn test_compute_proof_descriptor() {
         // https://github.com/ethereum/consensus-specs/blob/18155dd10413ad5b730073f986600ce1aac4bf24/ssz/merkle-proofs.md#compact-multiproofs
-        assert_eq!(compute_proof_descriptor(&vec![42]), vec![0x25, 0xe0]);
         assert_eq!(
-            compute_proof_descriptor(&vec![5567]),
+            compute_proof_descriptor(&vec![42]).expect("can make descriptor"),
+            vec![0x25, 0xe0]
+        );
+        assert_eq!(
+            compute_proof_descriptor(&vec![5567]).expect("can make descriptor"),
             vec![0x25, 0x2a, 0xaf, 0x80]
         );
-        assert_eq!(compute_proof_descriptor(&vec![66]), vec![0x5, 0xf8]);
+        assert_eq!(
+            compute_proof_descriptor(&vec![66]).expect("can make descriptor"),
+            vec![0x5, 0xf8]
+        );
     }
 
     #[test]
     fn test_compact_multiproof_to_single() {
-        let descriptor = compute_proof_descriptor(&vec![42]);
+        let descriptor = compute_proof_descriptor(&vec![42]).expect("can make descriptor");
 
         let expected_state_root = decode_node_from_hex(
             "0x7903bc7cc62f3677c5c0e38562a122638a3627dd945d1f7992e4d32f1d4ef11e",
@@ -222,10 +248,6 @@ mod tests {
         .map(decode_node_from_hex)
         .collect::<Vec<_>>();
 
-        assert!(verify_compact_merkle_multiproof(
-            &branch,
-            &descriptor,
-            expected_state_root
-        ))
+        assert!(verify_compact_merkle_multiproof(&branch, &descriptor, expected_state_root).is_ok())
     }
 }

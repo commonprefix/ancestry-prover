@@ -9,6 +9,8 @@ pub enum AncestryProverError {
 
 #[derive(Error, Debug)]
 pub enum ProofProviderError {
+    #[error("Input error: {0}")]
+    InputError(String),
     #[error("State or block not found: {0}")]
     NotFoundError(String),
     #[error("Network error: {0}")]

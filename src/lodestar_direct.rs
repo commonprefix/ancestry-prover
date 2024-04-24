@@ -63,7 +63,9 @@ impl ProofProvider for LodestarDirectProvider {
         state_id: &str,
         gindex: u64,
     ) -> Result<Proof, ProofProviderError> {
-        let descriptor = compute_proof_descriptor(&[gindex as usize]);
+        let descriptor = compute_proof_descriptor(&[gindex as usize]).map_err(|err| {
+            ProofProviderError::InputError(format!("Failed to compute proof descriptor: {}", err))
+        })?;
         println!("{:?}", descriptor);
         let format = hex::encode(descriptor);
         println!("{:?}", format);
