@@ -48,9 +48,7 @@ impl ProofProvider for LodestarProvider {
         let descriptor = compute_proof_descriptor(&[gindex as usize]).map_err(|err| {
             ProofProviderError::InputError(format!("Failed to compute proof descriptor: {}", err))
         })?;
-        println!("{:?}", descriptor);
         let format = hex::encode(&descriptor);
-        println!("{:?}", format);
 
         // https://lodestar-sepolia.chainsafe.io/eth/v0/beacon/proof/state/latest
         let req = format!(
@@ -88,13 +86,12 @@ mod tests {
     use super::*;
 
     // #[tokio::test]
-    // async fn test_lodestar_direct() {
-    //     let lodestar =
-    //         LodestarDirectProvider::new("https://lodestar-mainnet.chainsafe.io".to_string());
+    // async fn test_lodestar_provider_generation() {
+    //     let lodestar = LodestarProvider::new("https://lodestar-mainnet.chainsafe.io".to_string());
 
     //     let proof = lodestar
     //         .get_state_proof(
-    //             "0x7903bc7cc62f3677c5c0e38562a122638a3627dd945d1f7992e4d32f1d4ef11e",
+    //             "0x936eee7dfbcf4bece1884442c9b83179d469b011ea9fea93a61323c63af346e6",
     //             42,
     //         )
     //         .await

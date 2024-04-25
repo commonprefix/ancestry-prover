@@ -44,9 +44,8 @@ impl<P: ProofProvider> AncestryProver<P> {
 }
 
 pub fn verify(
-    proof: BlockRootsProof,
+    proof: &BlockRootsProof,
     target_block_slot: u64,
-    target_block_hash: FixedBytes<32>,
     recent_block_slot: u64,
     recent_block_state_root: FixedBytes<32>,
 ) -> bool {
@@ -55,17 +54,16 @@ pub fn verify(
         unimplemented!()
     }
 
-    // TODO remove from arguments
-    _ = target_block_hash;
-
     proof.verify(recent_block_state_root)
 }
 
 #[cfg(test)]
 mod tests {
     use std::fs::File;
+    use std::str::FromStr;
 
     use crate::provider;
+    use crate::LodestarProvider;
     use crate::StateProverProvider;
     use ethereum_consensus::capella::BeaconBlockHeader;
 
@@ -198,7 +196,7 @@ mod tests {
 
     #[tokio::test]
     async fn it_should_verify_correct_proof() {
-        let mut target_block = get_test_block_for_slot(7_877_867);
+        let target_block = get_test_block_for_slot(7_877_867);
         let recent_block = get_test_block_for_slot(7_878_867);
 
         let mut prover_api = provider::MockProofProvider::new();
@@ -224,20 +222,17 @@ mod tests {
             .await
             .unwrap();
 
-        let target_block_hash = target_block.hash_tree_root().unwrap();
-
         assert!(verify(
-            proof,
+            &proof,
             target_block.slot,
-            target_block_hash,
             recent_block.slot,
             recent_block.state_root
         ));
     }
 
     // #[tokio::test]
-    // async fn it_should_work_grandpa() {
-    //     let prover_api = LodestarProvider::new(
+    // async fn it_should_work_with_state_prover() {
+    //     let prover_api = StateProverProvider::new(
     //         "mainnet".to_string(),
     //         "http://108.61.210.145:3000".to_string(),
     //     );
@@ -245,55 +240,72 @@ mod tests {
 
     //     let proof = prover
     //         .prove(
-    //             8784152,
-    //             8784409,
-    //             "0xfe208f4f3334cf033a4fed4e1b83191e54ec98e0731a08d4a57b901eb35d4964",
+    //             8935659,
+    //             8935690,
+    //             "0xb1a9ce67b8be888d39521702907c849735f300d8ef58ff3787cd326274d9a643",
     //         )
     //         .await
     //         .unwrap();
 
-    //     assert!(proof.verify(FixedBytes::from_str(
-    //         "0xfe208f4f3334cf033a4fed4e1b83191e54ec98e0731a08d4a57b901eb35d4964"
-    //     )));
+    //     assert!(verify(
+    //         &proof,
+    //         8935659,
+    //         8935690,
+    //         FixedBytes::from_str(
+    //             "0xb1a9ce67b8be888d39521702907c849735f300d8ef58ff3787cd326274d9a643",
+    //         )
+    //         .unwrap(),
+    //     ));
+
+    //     assert_eq!(
+    //         false,
+    //         verify(
+    //             &proof,
+    //             8935659,
+    //             8935690,
+    //             FixedBytes::from_str(
+    //                 "0xfe208f4f3334cf033a4fed4e1b83191e54ec98e0731a08d4a57b901eb35d4964"
+    //             )
+    //             .unwrap(),
+    //         )
+    //     );
     // }
 
     // #[tokio::test]
-    // async fn it_should_work_with_loadstar_direct() {
-    //     let prover_api =
-    //         LodestarDirectProvider::new("https://lodestar-mainnet.chainsafe.io".to_string());
+    // async fn it_should_work_with_lodestar_api() {
+    //     let prover_api = LodestarProvider::new("https://lodestar-mainnet.chainsafe.io".to_string());
     //     let prover = AncestryProver::new(prover_api);
 
     //     let proof = prover
     //         .prove(
-    //             8784152,
-    //             8784409,
-    //             "0xfe208f4f3334cf033a4fed4e1b83191e54ec98e0731a08d4a57b901eb35d4964",
+    //             8935659,
+    //             8935690,
+    //             "0xb1a9ce67b8be888d39521702907c849735f300d8ef58ff3787cd326274d9a643",
     //         )
     //         .await
     //         .unwrap();
 
     //     assert!(verify(
-    //         proof,
-    //         8784152,
-    //         8784409,
+    //         &proof,
+    //         8935659,
+    //         8935690,
     //         FixedBytes::from_str(
-    //             "0xfe208f4f3334cf033a4fed4e1b83191e54ec98e0731a08d4a57b901eb35d4964",
+    //             "0xb1a9ce67b8be888d39521702907c849735f300d8ef58ff3787cd326274d9a643",
     //         )
     //         .unwrap(),
     //     ));
 
-    //     assert!(verify(
-    //         proof,
-    //         8784152,
-    //         FixedBytes::from_str(
-    //             "0x22e5a0db0a3a4104996d140ba82ab4f2f94af20fba6da3408baa0dc87744dcef"
+    //     assert_eq!(
+    //         false,
+    //         verify(
+    //             &proof,
+    //             8935659,
+    //             8935690,
+    //             FixedBytes::from_str(
+    //                 "0xfe208f4f3334cf033a4fed4e1b83191e54ec98e0731a08d4a57b901eb35d4964"
+    //             )
+    //             .unwrap(),
     //         )
-    //         .unwrap(),
-    //         8784409,
-    //         FixedBytes::from_str(
-    //             "0xfe208f4f3334cf033a4fed4e1b83191e54ec98e0731a08d4a57b901eb35d4964"
-    //         )
-    //         .unwrap(),
-    //     ));
+    //     );
     // }
 }
