@@ -111,7 +111,7 @@ pub fn compute_proof_descriptor(
 
 // verifiying the proof
 
-fn compute_bits_from_proof_descriptor(descriptor: &[u8]) -> Vec<bool> {
+fn compute_bits_from_proof_descriptor(descriptor: &[u8]) -> Result<Vec<bool>, MerkleizationError> {
     // Convert bytes to a continuous bit string
     let bitstring: Vec<bool> = descriptor
         .iter()
@@ -119,18 +119,20 @@ fn compute_bits_from_proof_descriptor(descriptor: &[u8]) -> Vec<bool> {
         .collect();
 
     // Find the last '1' in the bitstring
-    let last_one_index = bitstring
-        .iter()
-        .rposition(|&bit| bit)
-        .expect("Descriptor does not contain any '1' bits");
+    let last_one_index = bitstring.iter().rposition(|&bit| bit).ok_or(
+        MerkleizationError::InvalidDescriptorError(
+            "Descriptor does not contain any '1' bits".to_string(),
+        ),
+    )?;
 
     // Ensure the padding after the last '1' is within the acceptable range
-    assert!(
-        bitstring.len() - last_one_index <= 8,
-        "Invalid proof descriptor: padding after the last '1' exceeds 8 bits"
-    );
+    if bitstring.len() - last_one_index > 8 {
+        return Err(MerkleizationError::InvalidDescriptorError(
+            "Invalid proof descriptor: padding after the last '1' exceeds 8 bits".to_string(),
+        ));
+    }
 
-    // Calculate the bit balance and assert conditions
+    // Calculate the bit balance and check conditions
     let mut count_0_vs_1 = 0;
     let mut bits = Vec::new();
 
@@ -142,20 +144,22 @@ fn compute_bits_from_proof_descriptor(descriptor: &[u8]) -> Vec<bool> {
             count_0_vs_1 += 1;
         }
 
-        assert!(
-            (count_0_vs_1 < 0) == (i == last_one_index),
-            "Mismatch in count of '0's vs '1's at the last index"
-        );
+        // Check mismatch condition at the last index
+        if (count_0_vs_1 < 0) != (i == last_one_index) {
+            return Err(MerkleizationError::InvalidDescriptorError(
+                "Mismatch in count of '0's vs '1's at the last index".to_string(),
+            ));
+        }
     }
 
-    bits
+    Ok(bits)
 }
 
 fn calculate_compact_multi_merkle_root(
     nodes: &[Node],
     descriptor: &[u8],
 ) -> Result<Node, MerkleizationError> {
-    let bits = compute_bits_from_proof_descriptor(descriptor);
+    let bits = compute_bits_from_proof_descriptor(descriptor)?;
     let mut ptr = [0, 0]; // [bit_index, node_index]
     let root = calculate_compact_multi_merkle_root_inner(nodes, &bits, &mut ptr)?;
     if ptr[0] != bits.len() || ptr[1] != nodes.len() {
