@@ -58,12 +58,7 @@ pub fn verify(
     // TODO remove from arguments
     _ = target_block_hash;
 
-    return proof.verify(recent_block_state_root);
-
-    // match proof.verify(recent_block_state_root) {
-    //     Ok(_) => true,
-    //     Err(_) => false,
-    // }
+    proof.verify(recent_block_state_root)
 }
 
 #[cfg(test)]
@@ -71,7 +66,7 @@ mod tests {
     use std::fs::File;
 
     use crate::provider;
-    use crate::LodestarProvider;
+    use crate::StateProverProvider;
     use ethereum_consensus::capella::BeaconBlockHeader;
 
     use super::*;
@@ -91,7 +86,7 @@ mod tests {
         let target_block = get_test_block_for_slot(7_862_720);
         let recent_block = get_test_block_for_slot(7_879_376);
 
-        let prover_api = LodestarProvider::new("mainnet".to_string(), "".to_string());
+        let prover_api = StateProverProvider::new("mainnet".to_string(), "".to_string());
         let prover = AncestryProver::new(prover_api);
         _ = prover
             .prove(
@@ -130,7 +125,7 @@ mod tests {
 
         let server = Server::run();
         let url = server.url("");
-        let prover_api = LodestarProvider::new("mainnet".to_string(), url.to_string());
+        let prover_api = StateProverProvider::new("mainnet".to_string(), url.to_string());
         let prover = AncestryProver::new(prover_api);
 
         let expected_response = BlockRootsProof::SingleProof {

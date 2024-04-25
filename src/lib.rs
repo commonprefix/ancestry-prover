@@ -1,11 +1,12 @@
 pub mod errors;
-pub mod lodestar;
-pub mod lodestar_direct;
+pub mod lodestar_provider;
 pub mod multiproof;
 pub mod prover;
 pub mod provider;
+pub mod state_prover_provider;
 
-pub use lodestar::LodestarProvider;
+pub use lodestar_provider::LodestarProvider;
 pub use prover::verify;
 pub use prover::AncestryProver;
 pub use provider::ProofProvider;
+pub use state_prover_provider::StateProverProvider;

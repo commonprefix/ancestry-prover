@@ -5,12 +5,12 @@ use mockall::automock;
 
 /// Provider that uses [`state prover`](https://github.com/commonprefix/state-prover) to interact with the Lodestar API.
 #[derive(Clone)]
-pub struct LodestarProvider {
+pub struct StateProverProvider {
     network: String,
     rpc: String,
 }
 
-impl LodestarProvider {
+impl StateProverProvider {
     #[cfg(test)]
     pub fn new(network: String, rpc: String) -> Self {
         Self { network, rpc }
@@ -36,7 +36,7 @@ impl LodestarProvider {
 
 #[automock]
 #[async_trait]
-impl ProofProvider for LodestarProvider {
+impl ProofProvider for StateProverProvider {
     async fn get_state_proof(
         &self,
         state_id: &str,
@@ -57,10 +57,10 @@ mod tests {
     use super::*;
     use httptest::{matchers::*, responders::*, Expectation, Server};
 
-    fn setup_server_and_prover() -> (Server, LodestarProvider) {
+    fn setup_server_and_prover() -> (Server, StateProverProvider) {
         let server = Server::run();
         let url = server.url("");
-        let rpc = LodestarProvider::new("mainnet".to_string(), url.to_string());
+        let rpc = StateProverProvider::new("mainnet".to_string(), url.to_string());
         (server, rpc)
     }
 

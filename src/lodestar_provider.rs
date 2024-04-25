@@ -9,11 +9,11 @@ use mockall::automock;
 /// Provider that uses the Lodestar API directly.
 // https://lodestar-sepolia.chainsafe.io/eth/v0/beacon/proof/state/latest
 #[derive(Clone)]
-pub struct LodestarDirectProvider {
+pub struct LodestarProvider {
     rpc: String,
 }
 
-impl LodestarDirectProvider {
+impl LodestarProvider {
     #[cfg(test)]
     pub fn new(rpc: String) -> Self {
         Self { rpc }
@@ -39,7 +39,7 @@ impl LodestarDirectProvider {
 
 #[automock]
 #[async_trait]
-impl ProofProvider for LodestarDirectProvider {
+impl ProofProvider for LodestarProvider {
     async fn get_state_proof(
         &self,
         state_id: &str,
