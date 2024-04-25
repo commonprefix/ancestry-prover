@@ -1,26 +1,7 @@
 use crate::errors::ProofProviderError;
-use crate::provider::{Proof, ProofProvider};
+use crate::provider::{BlockRootsProof, ProofProvider};
 use async_trait::async_trait;
-use ethereum_consensus::ssz::prelude::*;
 use mockall::automock;
-use serde::{Deserialize, Serialize};
-
-#[derive(PartialEq, Deserialize, Debug, Serialize, Default, Clone)]
-pub(crate) struct LodestarProof {
-    pub gindex: u64,
-    pub witnesses: Vec<Node>,
-    pub leaf: Node,
-}
-
-impl From<LodestarProof> for Proof {
-    fn from(lodestar_proof: LodestarProof) -> Self {
-        Proof {
-            index: lodestar_proof.gindex,
-            branch: lodestar_proof.witnesses,
-            leaf: lodestar_proof.leaf,
-        }
-    }
-}
 
 /// Provider that uses [`state prover`](https://github.com/commonprefix/state-prover) to interact with the Lodestar API.
 #[derive(Clone)]
@@ -35,7 +16,7 @@ impl LodestarProvider {
         Self { network, rpc }
     }
 
-    async fn get(&self, req: &str) -> Result<LodestarProof, ProofProviderError> {
+    async fn get(&self, req: &str) -> Result<BlockRootsProof, ProofProviderError> {
         let response = reqwest::get(req)
             .await
             .map_err(ProofProviderError::NetworkError)?;
@@ -60,20 +41,14 @@ impl ProofProvider for LodestarProvider {
         &self,
         state_id: &str,
         gindex: u64,
-    ) -> Result<Proof, ProofProviderError> {
+    ) -> Result<BlockRootsProof, ProofProviderError> {
         let req = format!(
             "{}/state_proof?state_id={}&gindex={}&network={}",
             self.rpc, state_id, gindex, self.network
         );
 
         let lodestar_proof = self.get(&req).await;
-        match lodestar_proof {
-            Ok(lodestar_proof) => {
-                let proof: Proof = lodestar_proof.into();
-                Ok(proof)
-            }
-            Err(e) => Err(e),
-        }
+        lodestar_proof
     }
 }
 
@@ -92,7 +67,7 @@ mod tests {
     #[tokio::test]
     async fn test_get_state_proof() {
         let (server, prover) = setup_server_and_prover();
-        let expected_response = LodestarProof::default();
+        let expected_response = BlockRootsProof::default();
         let json_response = serde_json::to_string(&expected_response).unwrap();
 
         server.expect(

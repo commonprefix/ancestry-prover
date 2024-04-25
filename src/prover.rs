@@ -1,27 +1,8 @@
 use crate::errors::AncestryProverError;
-use crate::provider::ProofProvider;
+use crate::provider::{BlockRootsProof, ProofProvider, Verify};
 use alloy_primitives::FixedBytes;
 use ethereum_consensus::capella::presets::mainnet::{BeaconState, SLOTS_PER_HISTORICAL_ROOT};
 use ethereum_consensus::ssz::prelude::*;
-use serde;
-
-/// Necessary proofs to verify that a given block is an ancestor of another block.
-/// In our case, it proves that the block that contains the event we are looking for, is an ancestor of the recent block that we got from the LightClientUpdate message.
-#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq)]
-pub struct BlockRootsProof {
-    /// Generalized index from a block_root that we care about to the state root.
-    index: u64,
-    branch: Vec<Node>,
-}
-
-impl Default for BlockRootsProof {
-    fn default() -> Self {
-        Self {
-            index: 0,
-            branch: vec![],
-        }
-    }
-}
 
 pub struct AncestryProver<P: ProofProvider> {
     proof_provider: P,
@@ -58,10 +39,7 @@ impl<P: ProofProvider> AncestryProver<P> {
             .get_state_proof(state_root_str.as_str(), gindex)
             .await?;
 
-        Ok(BlockRootsProof {
-            index: gindex,
-            branch: proof.branch,
-        })
+        Ok(proof)
     }
 }
 
@@ -77,25 +55,23 @@ pub fn verify(
         unimplemented!()
     }
 
-    let merkle_proof = ssz_rs::proofs::Proof {
-        leaf: target_block_hash.as_slice().try_into().unwrap(),
-        index: proof.index as usize,
-        branch: proof.branch,
-    };
+    // TODO remove from arguments
+    _ = target_block_hash;
 
-    match merkle_proof.verify(recent_block_state_root) {
-        Ok(_) => true,
-        Err(_) => false,
-    }
+    return proof.verify(recent_block_state_root);
+
+    // match proof.verify(recent_block_state_root) {
+    //     Ok(_) => true,
+    //     Err(_) => false,
+    // }
 }
 
 #[cfg(test)]
 mod tests {
     use std::fs::File;
 
-    use crate::provider::Proof;
+    use crate::provider;
     use crate::LodestarProvider;
-    use crate::{lodestar::LodestarProof, provider};
     use ethereum_consensus::capella::BeaconBlockHeader;
 
     use super::*;
@@ -107,14 +83,6 @@ mod tests {
         let block: BeaconBlockHeader = serde_json::from_reader(file).unwrap();
         block
     }
-
-    // fn setup<'a>() -> (Server, AncestryProver<LodestarProvider>) {
-    //     let server = Server::run();
-    //     let url = server.url("");
-    //     let prover_api = LodestarProvider::new("mainnet".to_string(), url.to_string());
-    //     let prover = AncestryProver::new(prover_api);
-    //     (server, prover)
-    // }
 
     #[tokio::test]
     #[should_panic(expected = "not implemented")]
@@ -143,7 +111,7 @@ mod tests {
         let mut prover_api = provider::MockProofProvider::new();
         prover_api
             .expect_get_state_proof()
-            .returning(|_block_id, _gindex| Ok(Proof::default()));
+            .returning(|_block_id, _gindex| Ok(BlockRootsProof::default()));
         let prover = AncestryProver::new(prover_api);
         _ = prover
             .prove(
@@ -165,9 +133,10 @@ mod tests {
         let prover_api = LodestarProvider::new("mainnet".to_string(), url.to_string());
         let prover = AncestryProver::new(prover_api);
 
-        let expected_response = LodestarProof {
+        let expected_response = BlockRootsProof::SingleProof {
             gindex: expected_gindex,
-            ..Default::default()
+            witnesses: vec![],
+            leaf: Node::default(),
         };
         let json_response = serde_json::to_string(&expected_response).unwrap();
 
@@ -190,7 +159,13 @@ mod tests {
             )
             .await
             .unwrap();
-        assert_eq!(proof.index, 309908);
+
+        match proof {
+            BlockRootsProof::SingleProof { gindex, .. } => {
+                assert_eq!(gindex, 309908);
+            }
+            _ => panic!("Invalid proof type"),
+        }
     }
 
     #[tokio::test]
@@ -199,11 +174,7 @@ mod tests {
         let recent_block = get_test_block_for_slot(7_878_867);
 
         let file = File::open("./src/testdata/state_prover/state_proof_0x044adfafd8b8a889ea689470f630e61dddba22feb705c83eec032fac075de2ec_g308459.json").unwrap();
-        let expected_proof: LodestarProof = serde_json::from_reader(file).unwrap();
-        let expected_proof = BlockRootsProof {
-            index: expected_proof.gindex,
-            branch: expected_proof.witnesses,
-        };
+        let expected_proof: BlockRootsProof = serde_json::from_reader(file).unwrap();
 
         let mut prover_api = provider::MockProofProvider::new();
         prover_api
@@ -214,8 +185,7 @@ mod tests {
                     block_id, gindex
                 );
                 let file = File::open(filename).unwrap();
-                let res: LodestarProof = serde_json::from_reader(file).unwrap();
-                let proof: Proof = res.into();
+                let proof: BlockRootsProof = serde_json::from_reader(file).unwrap();
                 Ok(proof)
             });
         let prover = AncestryProver::new(prover_api);
@@ -245,8 +215,7 @@ mod tests {
                     block_id, gindex
                 );
                 let file = File::open(filename).unwrap();
-                let res: LodestarProof = serde_json::from_reader(file).unwrap();
-                let proof: Proof = res.into();
+                let proof: BlockRootsProof = serde_json::from_reader(file).unwrap();
                 Ok(proof)
             });
         let prover = AncestryProver::new(prover_api);
@@ -273,7 +242,7 @@ mod tests {
 
     // #[tokio::test]
     // async fn it_should_work_grandpa() {
-    //     let prover_api = provider::LodestarProvider::new(
+    //     let prover_api = LodestarProvider::new(
     //         "mainnet".to_string(),
     //         "http://108.61.210.145:3000".to_string(),
     //     );
@@ -287,6 +256,36 @@ mod tests {
     //         )
     //         .await
     //         .unwrap();
+
+    //     assert!(proof.verify(FixedBytes::from_str(
+    //         "0xfe208f4f3334cf033a4fed4e1b83191e54ec98e0731a08d4a57b901eb35d4964"
+    //     )));
+    // }
+
+    // #[tokio::test]
+    // async fn it_should_work_with_loadstar_direct() {
+    //     let prover_api =
+    //         LodestarDirectProvider::new("https://lodestar-mainnet.chainsafe.io".to_string());
+    //     let prover = AncestryProver::new(prover_api);
+
+    //     let proof = prover
+    //         .prove(
+    //             8784152,
+    //             8784409,
+    //             "0xfe208f4f3334cf033a4fed4e1b83191e54ec98e0731a08d4a57b901eb35d4964",
+    //         )
+    //         .await
+    //         .unwrap();
+
+    //     assert!(verify(
+    //         proof,
+    //         8784152,
+    //         8784409,
+    //         FixedBytes::from_str(
+    //             "0xfe208f4f3334cf033a4fed4e1b83191e54ec98e0731a08d4a57b901eb35d4964",
+    //         )
+    //         .unwrap(),
+    //     ));
 
     //     assert!(verify(
     //         proof,

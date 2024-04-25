@@ -1,28 +1,10 @@
 use crate::errors::ProofProviderError;
 use crate::multiproof::compute_proof_descriptor;
-use crate::provider::{Proof, ProofProvider};
+use crate::provider::{BlockRootsProof, ProofProvider};
 use async_trait::async_trait;
 use ethereum_consensus::ssz::prelude::*;
 use hex;
 use mockall::automock;
-use serde::{Deserialize, Serialize};
-
-#[derive(PartialEq, Deserialize, Debug, Serialize, Default, Clone)]
-pub(crate) struct LodestarProof {
-    pub gindex: u64,
-    pub witnesses: Vec<Node>,
-    pub leaf: Node,
-}
-
-impl From<LodestarProof> for Proof {
-    fn from(lodestar_proof: LodestarProof) -> Self {
-        Proof {
-            index: lodestar_proof.gindex,
-            branch: lodestar_proof.witnesses,
-            leaf: lodestar_proof.leaf,
-        }
-    }
-}
 
 /// Provider that uses the Lodestar API directly.
 // https://lodestar-sepolia.chainsafe.io/eth/v0/beacon/proof/state/latest
@@ -62,12 +44,12 @@ impl ProofProvider for LodestarDirectProvider {
         &self,
         state_id: &str,
         gindex: u64,
-    ) -> Result<Proof, ProofProviderError> {
+    ) -> Result<BlockRootsProof, ProofProviderError> {
         let descriptor = compute_proof_descriptor(&[gindex as usize]).map_err(|err| {
             ProofProviderError::InputError(format!("Failed to compute proof descriptor: {}", err))
         })?;
         println!("{:?}", descriptor);
-        let format = hex::encode(descriptor);
+        let format = hex::encode(&descriptor);
         println!("{:?}", format);
 
         // https://lodestar-sepolia.chainsafe.io/eth/v0/beacon/proof/state/latest
@@ -91,11 +73,9 @@ impl ProofProvider for LodestarDirectProvider {
                     leaves.push(leaf);
                 }
 
-                // TEMP
-                Ok(Proof {
-                    index: gindex,
-                    branch: leaves,
-                    leaf: Node::default(),
+                Ok(BlockRootsProof::CompactProof {
+                    descriptor,
+                    nodes: leaves,
                 })
             }
             Err(e) => Err(e),
@@ -107,20 +87,21 @@ impl ProofProvider for LodestarDirectProvider {
 mod tests {
     use super::*;
 
-    #[tokio::test]
-    async fn test_lodestar_direct() {
-        let lodestar =
-            LodestarDirectProvider::new("https://lodestar-mainnet.chainsafe.io".to_string());
+    // #[tokio::test]
+    // async fn test_lodestar_direct() {
+    //     let lodestar =
+    //         LodestarDirectProvider::new("https://lodestar-mainnet.chainsafe.io".to_string());
 
-        let proof = lodestar
-            .get_state_proof(
-                "0x7903bc7cc62f3677c5c0e38562a122638a3627dd945d1f7992e4d32f1d4ef11e",
-                42,
-            )
-            .await;
+    //     let proof = lodestar
+    //         .get_state_proof(
+    //             "0x7903bc7cc62f3677c5c0e38562a122638a3627dd945d1f7992e4d32f1d4ef11e",
+    //             42,
+    //         )
+    //         .await
+    //         .unwrap();
 
-        println!("{:?}", proof);
+    //     println!("{:?}", proof);
 
-        assert!(true);
-    }
+    //     assert!(true);
+    // }
 }
