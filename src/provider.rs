@@ -1,9 +1,10 @@
-use crate::{errors::ProofProviderError, multiproof::verify_compact_merkle_multiproof};
+use crate::errors::ProofProviderError;
 use alloy_primitives::FixedBytes;
 use async_trait::async_trait;
 use ethereum_consensus::ssz::prelude::Node;
 use mockall::automock;
 use serde::{Deserialize, Serialize};
+use ssz_rs::compact_multiproofs::verify_compact_merkle_multiproof;
 
 // TODO Deserialize
 pub trait Verify: std::fmt::Debug + PartialEq + Serialize + Default + Clone {

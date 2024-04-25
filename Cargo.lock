@@ -73,7 +73,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.9.9",
- "ssz_rs 0.9.0 (git+https://github.com/ralexstokes/ssz-rs?branch=main)",
+ "ssz_rs 0.9.0 (git+https://github.com/commonprefix/ssz-rs?branch=compact-multiproofs)",
  "thiserror",
  "tokio",
 ]
@@ -2348,13 +2348,13 @@ dependencies = [
 [[package]]
 name = "ssz_rs"
 version = "0.9.0"
-source = "git+https://github.com/ralexstokes/ssz-rs?branch=main#8b2eb8ea06fd14227e5a16c85e79fccbed151a3b"
+source = "git+https://github.com/commonprefix/ssz-rs?branch=compact-multiproofs#c86bb948ad6204552d081af9608ced7c4bbdb0ed"
 dependencies = [
  "alloy-primitives",
  "bitvec",
  "serde",
  "sha2 0.9.9",
- "ssz_rs_derive 0.9.0 (git+https://github.com/ralexstokes/ssz-rs?branch=main)",
+ "ssz_rs_derive 0.9.0 (git+https://github.com/commonprefix/ssz-rs?branch=compact-multiproofs)",
 ]
 
 [[package]]
@@ -2372,7 +2372,7 @@ dependencies = [
 [[package]]
 name = "ssz_rs_derive"
 version = "0.9.0"
-source = "git+https://github.com/ralexstokes/ssz-rs?branch=main#8b2eb8ea06fd14227e5a16c85e79fccbed151a3b"
+source = "git+https://github.com/commonprefix/ssz-rs?branch=compact-multiproofs#c86bb948ad6204552d081af9608ced7c4bbdb0ed"
 dependencies = [
  "proc-macro2",
  "quote",

@@ -1,6 +1,5 @@
 pub mod errors;
 pub mod lodestar_provider;
-pub mod multiproof;
 pub mod prover;
 pub mod provider;
 pub mod state_prover_provider;

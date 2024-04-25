@@ -1,6 +1,6 @@
 use crate::errors::ProofProviderError;
-use crate::multiproof::compute_proof_descriptor;
 use crate::provider::{BlockRootsProof, ProofProvider};
+use ::ssz_rs::compact_multiproofs::compute_proof_descriptor;
 use async_trait::async_trait;
 use ethereum_consensus::ssz::prelude::*;
 use hex;
