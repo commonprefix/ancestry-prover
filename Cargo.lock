@@ -72,7 +72,6 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
- "sha2 0.9.9",
  "ssz_rs 0.9.0 (git+https://github.com/commonprefix/ssz-rs?branch=compact-multiproofs)",
  "thiserror",
  "tokio",
