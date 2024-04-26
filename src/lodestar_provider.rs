@@ -81,24 +81,24 @@ impl ProofProvider for LodestarProvider {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
 
-    // #[tokio::test]
-    // async fn test_lodestar_provider_generation() {
-    //     let lodestar = LodestarProvider::new("https://lodestar-mainnet.chainsafe.io".to_string());
+//     #[tokio::test]
+//     async fn test_lodestar_provider_generation() {
+//         let lodestar = LodestarProvider::new("https://lodestar-mainnet.chainsafe.io".to_string());
 
-    //     let proof = lodestar
-    //         .get_state_proof(
-    //             "0x936eee7dfbcf4bece1884442c9b83179d469b011ea9fea93a61323c63af346e6",
-    //             42,
-    //         )
-    //         .await
-    //         .unwrap();
+//         let proof = lodestar
+//             .get_state_proof(
+//                 "0x936eee7dfbcf4bece1884442c9b83179d469b011ea9fea93a61323c63af346e6",
+//                 42,
+//             )
+//             .await
+//             .unwrap();
 
-    //     println!("{:?}", proof);
+//         println!("{:?}", proof);
 
-    //     assert!(true);
-    // }
-}
+//         assert!(true);
+//     }
+// }

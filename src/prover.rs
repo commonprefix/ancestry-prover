@@ -3,6 +3,7 @@ use crate::provider::{BlockRootsProof, ProofProvider, Verify};
 use alloy_primitives::FixedBytes;
 use ethereum_consensus::capella::presets::mainnet::{BeaconState, SLOTS_PER_HISTORICAL_ROOT};
 use ethereum_consensus::ssz::prelude::*;
+use std::str::FromStr;
 
 pub struct AncestryProver<P: ProofProvider> {
     proof_provider: P,
@@ -47,12 +48,17 @@ pub fn verify(
     proof: &BlockRootsProof,
     target_block_slot: u64,
     recent_block_slot: u64,
-    recent_block_state_root: FixedBytes<32>,
+    recent_block_state_root: &str,
 ) -> bool {
     if recent_block_slot.saturating_sub(target_block_slot) >= (SLOTS_PER_HISTORICAL_ROOT as u64) {
         // todo:  Historical root proofs
         unimplemented!()
     }
+
+    let recent_block_state_root = match FixedBytes::from_str(recent_block_state_root) {
+        Ok(root) => root,
+        Err(_) => return false,
+    };
 
     proof.verify(recent_block_state_root)
 }
@@ -60,10 +66,8 @@ pub fn verify(
 #[cfg(test)]
 mod tests {
     use std::fs::File;
-    use std::str::FromStr;
 
     use crate::provider;
-    use crate::LodestarProvider;
     use crate::StateProverProvider;
     use ethereum_consensus::capella::BeaconBlockHeader;
 
@@ -226,7 +230,7 @@ mod tests {
             &proof,
             target_block.slot,
             recent_block.slot,
-            recent_block.state_root
+            recent_block.state_root.to_string().as_str()
         ));
     }
 
@@ -238,35 +242,32 @@ mod tests {
     //     );
     //     let prover = AncestryProver::new(prover_api);
 
+    //     // This is the block slot that we want to prove
+    //     let target_block_slot = 8942024;
+
+    //     let recent_block_slot = 8942159;
+    //     let recent_block_state_id =
+    //         "0xca0ad12cf0a4d5935c1636a88bc7d22ccacc86637f406e799f3b20d22ca715f8";
+
     //     let proof = prover
-    //         .prove(
-    //             8935659,
-    //             8935690,
-    //             "0xb1a9ce67b8be888d39521702907c849735f300d8ef58ff3787cd326274d9a643",
-    //         )
+    //         .prove(target_block_slot, recent_block_slot, recent_block_state_id)
     //         .await
     //         .unwrap();
 
     //     assert!(verify(
     //         &proof,
-    //         8935659,
-    //         8935690,
-    //         FixedBytes::from_str(
-    //             "0xb1a9ce67b8be888d39521702907c849735f300d8ef58ff3787cd326274d9a643",
-    //         )
-    //         .unwrap(),
+    //         target_block_slot,
+    //         recent_block_slot,
+    //         recent_block_state_id,
     //     ));
 
     //     assert_eq!(
     //         false,
     //         verify(
     //             &proof,
-    //             8935659,
-    //             8935690,
-    //             FixedBytes::from_str(
-    //                 "0xfe208f4f3334cf033a4fed4e1b83191e54ec98e0731a08d4a57b901eb35d4964"
-    //             )
-    //             .unwrap(),
+    //             target_block_slot,
+    //             recent_block_slot,
+    //             "0xfe208f4f3334cf033a4fed4e1b83191e54ec98e0731a08d4a57b901eb35d4964",
     //         )
     //     );
     // }
@@ -276,35 +277,32 @@ mod tests {
     //     let prover_api = LodestarProvider::new("https://lodestar-mainnet.chainsafe.io".to_string());
     //     let prover = AncestryProver::new(prover_api);
 
+    //     // This is the block slot that we want to prove
+    //     let target_block_slot = 8942024;
+
+    //     let recent_block_slot = 8942159;
+    //     let recent_block_state_id =
+    //         "0xca0ad12cf0a4d5935c1636a88bc7d22ccacc86637f406e799f3b20d22ca715f8";
+
     //     let proof = prover
-    //         .prove(
-    //             8935659,
-    //             8935690,
-    //             "0xb1a9ce67b8be888d39521702907c849735f300d8ef58ff3787cd326274d9a643",
-    //         )
+    //         .prove(target_block_slot, recent_block_slot, recent_block_state_id)
     //         .await
     //         .unwrap();
 
     //     assert!(verify(
     //         &proof,
-    //         8935659,
-    //         8935690,
-    //         FixedBytes::from_str(
-    //             "0xb1a9ce67b8be888d39521702907c849735f300d8ef58ff3787cd326274d9a643",
-    //         )
-    //         .unwrap(),
+    //         target_block_slot,
+    //         recent_block_slot,
+    //         recent_block_state_id,
     //     ));
 
     //     assert_eq!(
     //         false,
     //         verify(
     //             &proof,
-    //             8935659,
-    //             8935690,
-    //             FixedBytes::from_str(
-    //                 "0xfe208f4f3334cf033a4fed4e1b83191e54ec98e0731a08d4a57b901eb35d4964"
-    //             )
-    //             .unwrap(),
+    //             target_block_slot,
+    //             recent_block_slot,
+    //             "0xfe208f4f3334cf033a4fed4e1b83191e54ec98e0731a08d4a57b901eb35d4964",
     //         )
     //     );
     // }
