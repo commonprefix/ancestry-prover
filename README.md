@@ -10,7 +10,7 @@ The library makes use of proof providers, which are responsible for fetching the
 
 Supported providers are:
 
-- `LodestarProvider`: which uses the amazing [Lodestar][http://lodestar.chainsafe.io] beacon node.
+- `LodestarProvider`: which uses the amazing [Lodestar](http://lodestar.chainsafe.io) beacon node.
 - `StateProverProvider`: which uses [`state prover`](https://github.com/commonprefix/state-prover) to interact with the Lodestar API. Useful for generating single merkle proofs.
 
 ### Usage
