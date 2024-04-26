@@ -7,5 +7,5 @@ pub mod state_prover_provider;
 pub use lodestar_provider::LodestarProvider;
 pub use prover::verify;
 pub use prover::AncestryProver;
-pub use provider::ProofProvider;
+pub use provider::{BlockRootsProof, ProofProvider};
 pub use state_prover_provider::StateProverProvider;

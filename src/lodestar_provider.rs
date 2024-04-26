@@ -6,8 +6,7 @@ use ethereum_consensus::ssz::prelude::*;
 use hex;
 use mockall::automock;
 
-/// Provider that uses the Lodestar API directly.
-// https://lodestar-sepolia.chainsafe.io/eth/v0/beacon/proof/state/latest
+/// Provider that uses the [Lodestar](http://lodestar.chainsafe.io/) API directly.
 #[derive(Clone)]
 pub struct LodestarProvider {
     rpc: String,
@@ -50,7 +49,7 @@ impl ProofProvider for LodestarProvider {
         })?;
         let format = hex::encode(&descriptor);
 
-        // https://lodestar-sepolia.chainsafe.io/eth/v0/beacon/proof/state/latest
+        // Example URL: https://lodestar-sepolia.chainsafe.io/eth/v0/beacon/proof/state/latest?format=...
         let req = format!(
             "{}/eth/v0/beacon/proof/state/{}?format={}",
             self.rpc, state_id, format,
@@ -80,25 +79,3 @@ impl ProofProvider for LodestarProvider {
         }
     }
 }
-
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-
-//     #[tokio::test]
-//     async fn test_lodestar_provider_generation() {
-//         let lodestar = LodestarProvider::new("https://lodestar-mainnet.chainsafe.io".to_string());
-
-//         let proof = lodestar
-//             .get_state_proof(
-//                 "0x936eee7dfbcf4bece1884442c9b83179d469b011ea9fea93a61323c63af346e6",
-//                 42,
-//             )
-//             .await
-//             .unwrap();
-
-//         println!("{:?}", proof);
-
-//         assert!(true);
-//     }
-// }

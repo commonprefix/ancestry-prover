@@ -11,42 +11,6 @@ pub trait Verify: std::fmt::Debug + PartialEq + Serialize + Default + Clone {
     fn verify(&self, root: FixedBytes<32>) -> bool;
 }
 
-// #[derive(PartialEq, Deserialize, Debug, Serialize, Default, Clone)]
-// pub struct SingleProof {
-//     pub gindex: u64,
-//     pub witnesses: Vec<Node>,
-//     pub leaf: Node,
-// }
-
-// impl Verify for SingleProof {
-//     fn verify(&self, root: FixedBytes<32>) -> bool {
-//         let merkle_proof = ssz_rs::proofs::Proof {
-//             leaf: self.leaf,
-//             index: self.gindex as usize,
-//             branch: self.witnesses,
-//         };
-//         match merkle_proof.verify(root) {
-//             Ok(_) => true,
-//             Err(_) => false,
-//         }
-//     }
-// }
-
-// #[derive(PartialEq, Deserialize, Debug, Serialize, Default, Clone)]
-// pub struct CompactProof {
-//     pub descriptor: Vec<u8>,
-//     pub nodes: Vec<Node>,
-// }
-
-// impl Verify for CompactProof {
-//     fn verify(&self, root: FixedBytes<32>) -> bool {
-//         match verify_compact_merkle_multiproof(&self.nodes, &self.descriptor, root) {
-//             Ok(_) => true,
-//             Err(_) => false,
-//         }
-//     }
-// }
-
 #[derive(PartialEq, Deserialize, Debug, Serialize, Clone)]
 #[serde(untagged)]
 pub enum BlockRootsProof {
