@@ -49,7 +49,7 @@ assert!(verify(
 ));
 ```
 
-## Acknowledgements
+### Acknowledgements
 
 - [@ralexstokes](https://github.com/ralexstokes) for his amazing work on the [ethereum-consensus](https://github.com/ralexstokes/ethereum-consensus) and [ssz_rs](https://github.com/ralexstokes/ssz-rs) libraries.
 - [Lodestar](https://lodestar.chainsafe.io) team for their amazing work on the Lodestar beacon node.
