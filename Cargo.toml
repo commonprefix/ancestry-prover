@@ -8,7 +8,7 @@ description = "An all-in-one solution for proving that a beacon block is a prede
 [dependencies]
 serde = { version = "1.0.145", default-features = false, features = ["derive"] }
 serde_json = "1.0.108"
-ethereum_consensus = { package = "ethereum-consensus", git = "https://github.com/ralexstokes/ethereum-consensus", version = "0.1.1" }
+ethereum_consensus = { package = "ethereum-consensus", git = "https://github.com/ralexstokes/ethereum-consensus", branch = "main", version = "0.1.1" }
 ssz_rs = { git = "https://github.com/commonprefix/ssz-rs", branch = "compact-multiproofs", version = "0.9.0" }
 async-trait = "0.1.74"
 futures = "0.3.23"
