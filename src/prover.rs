@@ -277,12 +277,12 @@ mod tests {
     //     let prover_api = LodestarProvider::new("https://lodestar-mainnet.chainsafe.io".to_string());
     //     let prover = AncestryProver::new(prover_api);
 
-    //     // This is the block slot that we want to prove
-    //     let target_block_slot = 8942024;
-
-    //     let recent_block_slot = 8942159;
+    //     let recent_block_slot = 9930462;
     //     let recent_block_state_id =
-    //         "0xca0ad12cf0a4d5935c1636a88bc7d22ccacc86637f406e799f3b20d22ca715f8";
+    //         "0x6f508c30b2d7d0956f9946ee9c9e48364569658026fd2c99ec86e07159fa4a86";
+
+    //     // This is the block slot that we want to prove
+    //     let target_block_slot = 9930390;
 
     //     let proof = prover
     //         .prove(target_block_slot, recent_block_slot, recent_block_state_id)
@@ -302,7 +302,7 @@ mod tests {
     //             &proof,
     //             target_block_slot,
     //             recent_block_slot,
-    //             "0xfe208f4f3334cf033a4fed4e1b83191e54ec98e0731a08d4a57b901eb35d4964",
+    //             "0x851145dbdb9da66db5d4c5e0275829349afccfdda53925d17d646645b0fb4721",
     //         )
     //     );
     // }

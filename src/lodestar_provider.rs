@@ -5,6 +5,7 @@ use async_trait::async_trait;
 use ethereum_consensus::ssz::prelude::*;
 use hex;
 use mockall::automock;
+use serde::{Deserialize, Serialize};
 
 /// Provider that uses the [Lodestar](http://lodestar.chainsafe.io/) API directly.
 #[derive(Clone)]
@@ -12,8 +13,19 @@ pub struct LodestarProvider {
     rpc: String,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+struct ProofResponse {
+    data: ProofData,
+    version: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct ProofData {
+    leaves: Vec<Node>,
+    descriptor: String,
+}
+
 impl LodestarProvider {
-    #[cfg(test)]
     pub fn new(rpc: String) -> Self {
         Self { rpc }
     }
@@ -50,29 +62,21 @@ impl ProofProvider for LodestarProvider {
         let format = hex::encode(&descriptor);
 
         // Example URL: https://lodestar-sepolia.chainsafe.io/eth/v0/beacon/proof/state/latest?format=...
-        let req = format!(
+        let req_url = format!(
             "{}/eth/v0/beacon/proof/state/{}?format={}",
             self.rpc, state_id, format,
         );
 
-        let compact_proof = self.get(&req).await;
-        match compact_proof {
-            Ok(compact_proof) => {
-                if compact_proof.len() % 32 != 0 {
-                    return Err(ProofProviderError::InvalidProofError());
-                }
+        let response = self.get(&req_url).await;
 
-                // Convert the body into an array of 32-byte chunks
-                let mut leaves = Vec::new();
-                for chunk in compact_proof.chunks(32) {
-                    let mut leaf = Node::default();
-                    leaf.copy_from_slice(chunk);
-                    leaves.push(leaf);
-                }
+        match response {
+            Ok(compact_proof) => {
+                let proof_response: ProofResponse = serde_json::from_slice(&compact_proof)
+                    .map_err(|_| ProofProviderError::InvalidProofError())?;
 
                 Ok(BlockRootsProof::CompactProof {
                     descriptor,
-                    nodes: leaves,
+                    nodes: proof_response.data.leaves,
                 })
             }
             Err(e) => Err(e),
